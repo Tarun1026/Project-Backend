@@ -210,7 +210,7 @@ const accessRefreshToken=asyncHandler(async(req,res)=>{
 const changePassword=asyncHandler(async(req,res)=>{
   const {oldPassword,newPassword}=req.body
 
-  const user=await User.findById(req.user_.id)
+  const user=await User.findById(req.user._id)
   const matchPassword=await user.isPasswordCorrect(oldPassword)
   if(!matchPassword){
     throw new ApiError(401,"old password not correct")
@@ -231,17 +231,21 @@ const changePassword=asyncHandler(async(req,res)=>{
 
 const getUserDetails=asyncHandler(async(req,res)=>{
   res.status(200)
-  .json(200,req.user,"Current user fetched successfully")
+  .json(
+    new ApiResponse(
+      200,req.user,"Current User Fetched"
+    )
+  )
 })
 
 const updateAccountDetails=asyncHandler(async(req,res)=>{
   const {fullName,email}=req.body
 
-  if(!fullName||!email){
+  if(!fullName){
     throw new ApiError(401,"Mandatory Field is Required")
   }
 
-  const user=User.findByIdAndUpdate(
+  const user=await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set:{
@@ -276,7 +280,7 @@ const updateAvatar=asyncHandler(async(req,res)=>{
     throw new ApiError(400,"Avatar Image is Missing")
   }
 
-  const user=User.findByIdAndUpdate(
+  const user=await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set:{
@@ -300,9 +304,13 @@ const updateUserName=asyncHandler(async(req,res)=>{
   
   const{currentUserName,newUserName}=req.body
   const user= await User.findById(req.user?._id)
+  if(!user){
+   throw new ApiError(401,"User not Found")
+  }
   const checkExistedUserName=await User.findOne({
-    newUserName
+    username:newUserName
   })
+  // console.log("exites",checkExistedUserName)
   if (checkExistedUserName){
     throw new ApiError(401,"Username already occupied,Please use another name");
     
@@ -323,7 +331,7 @@ const followDetails=asyncHandler(async(req,res)=>{
   if(!username?.trim()){
     throw new ApiError(400,"Username not find")
   }
-
+  console.log("user",username)
   const userDetails=await User.aggregate([
     {
       $match:{
@@ -349,10 +357,10 @@ const followDetails=asyncHandler(async(req,res)=>{
     {
       $addFields:{
         followerCount:{
-          $size:"followers"
+          $size:"$followers"
         },
         followingCount:{
-          $size:"following "
+          $size:"$following"
         },
         isFollowed:{
           $cond:{
@@ -369,7 +377,7 @@ const followDetails=asyncHandler(async(req,res)=>{
         username:1,
         email:1,
         followers:1,
-        followind:1,
+        following:1,
         followerCount:1,
         followingCount:1,
         isFollowed:1
